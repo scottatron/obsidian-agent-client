@@ -37,7 +37,10 @@ import {
 	wrapCommandForWsl,
 	convertWindowsPathToWsl,
 } from "../../shared/wsl-utils";
-import { resolveCommandDirectory } from "../../shared/path-utils";
+import {
+	resolveCommandDirectory,
+	expandHomePath,
+} from "../../shared/path-utils";
 import { getEnhancedWindowsEnv } from "../../shared/windows-env";
 import { escapeShellArgWindows, getLoginShell } from "../../shared/shell-utils";
 
@@ -184,8 +187,11 @@ export class AcpAdapter implements IAgentClient, IAcpClient {
 			);
 		}
 
-		const command = config.command.trim();
+		const command = expandHomePath(config.command.trim());
 		const args = config.args.length > 0 ? [...config.args] : [];
+		const nodePath = this.plugin.settings.nodePath.trim();
+		const resolvedNodePath =
+			nodePath.length > 0 ? expandHomePath(nodePath) : "";
 
 		this.logger.log(
 			`[AcpAdapter] Active agent: ${config.displayName} (${config.id})`,
@@ -210,13 +216,8 @@ export class AcpAdapter implements IAgentClient, IAcpClient {
 		}
 
 		// Add Node.js path to PATH if specified in settings
-		if (
-			this.plugin.settings.nodePath &&
-			this.plugin.settings.nodePath.trim().length > 0
-		) {
-			const nodeDir = resolveCommandDirectory(
-				this.plugin.settings.nodePath.trim(),
-			);
+		if (resolvedNodePath.length > 0) {
+			const nodeDir = resolveCommandDirectory(resolvedNodePath);
 			if (nodeDir) {
 				const separator = Platform.isWin ? ";" : ":";
 				baseEnv.PATH = baseEnv.PATH
@@ -237,10 +238,8 @@ export class AcpAdapter implements IAgentClient, IAcpClient {
 		// WSL mode for Windows (wrap command to run inside WSL)
 		if (Platform.isWin && this.plugin.settings.windowsWslMode) {
 			// Extract node directory from settings for PATH
-			const nodeDir = this.plugin.settings.nodePath
-				? resolveCommandDirectory(
-						this.plugin.settings.nodePath.trim(),
-					) || undefined
+			const nodeDir = resolvedNodePath
+				? resolveCommandDirectory(resolvedNodePath) || undefined
 				: undefined;
 
 			const wslWrapped = wrapCommandForWsl(
@@ -275,13 +274,8 @@ export class AcpAdapter implements IAgentClient, IAcpClient {
 			//    "#!/usr/bin/env node" require node to be in PATH for the env command to find it
 			// Therefore, we must explicitly set PATH inside the shell command
 			let fullCommand = commandString;
-			if (
-				this.plugin.settings.nodePath &&
-				this.plugin.settings.nodePath.trim().length > 0
-			) {
-				const nodeDir = resolveCommandDirectory(
-					this.plugin.settings.nodePath.trim(),
-				);
+			if (resolvedNodePath.length > 0) {
+				const nodeDir = resolveCommandDirectory(resolvedNodePath);
 				if (nodeDir) {
 					// Escape single quotes in nodeDir for shell safety
 					const escapedNodeDir = nodeDir.replace(/'/g, "'\\''");

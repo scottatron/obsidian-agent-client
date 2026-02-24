@@ -4,7 +4,7 @@ import type AgentClientPlugin from "../plugin";
 import { getLogger, Logger } from "./logger";
 import { Platform } from "obsidian";
 import { wrapCommandForWsl } from "./wsl-utils";
-import { resolveCommandDirectory } from "./path-utils";
+import { resolveCommandDirectory, expandHomePath } from "./path-utils";
 import { getEnhancedWindowsEnv } from "./windows-env";
 import { escapeShellArgWindows, getLoginShell } from "./shell-utils";
 
@@ -62,10 +62,11 @@ export class TerminalManager {
 		// Each platform wraps the command once in its appropriate shell
 		if (Platform.isWin && this.plugin.settings.windowsWslMode) {
 			// Extract node directory from settings for PATH (if available)
-			const nodeDir = this.plugin.settings.nodePath
-				? resolveCommandDirectory(
-						this.plugin.settings.nodePath.trim(),
-					) || undefined
+			const nodePath = this.plugin.settings.nodePath.trim();
+			const resolvedNodePath =
+				nodePath.length > 0 ? expandHomePath(nodePath) : "";
+			const nodeDir = resolvedNodePath
+				? resolveCommandDirectory(resolvedNodePath) || undefined
 				: undefined;
 
 			const wslWrapped = wrapCommandForWsl(

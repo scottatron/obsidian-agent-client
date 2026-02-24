@@ -1,3 +1,28 @@
+import { homedir } from "os";
+
+/**
+ * Expand a leading home-directory shorthand in a path string.
+ *
+ * Supported:
+ * - "~" => "/Users/name" (or Windows user home)
+ * - "~/foo" / "~\\foo" => "/Users/name/foo"
+ *
+ * Unsupported by design:
+ * - "~username/..." (left unchanged)
+ */
+export function expandHomePath(pathValue: string): string {
+	if (!pathValue) {
+		return pathValue;
+	}
+	if (pathValue === "~") {
+		return homedir();
+	}
+	if (pathValue.startsWith("~/") || pathValue.startsWith("~\\")) {
+		return `${homedir()}${pathValue.slice(1)}`;
+	}
+	return pathValue;
+}
+
 /**
  * Extract the directory containing a command (for PATH adjustments).
  * Example: /usr/local/bin/node → /usr/local/bin
