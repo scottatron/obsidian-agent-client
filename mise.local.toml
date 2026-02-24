@@ -1,0 +1,22 @@
+[tasks.local-install]
+description = "Build agent-client and install into an Obsidian vault plugin dir (set OBSIDIAN_VAULT_DIR to override)"
+run = """
+set -e
+
+VAULT_DIR="${OBSIDIAN_VAULT_DIR:-/Users/sarthur/src/github.com/scottatron/squad}"
+PLUGIN_DIR="$VAULT_DIR/.obsidian/plugins/agent-client"
+
+if [ ! -d "$VAULT_DIR/.obsidian" ]; then
+  echo "Vault does not look valid (missing .obsidian): $VAULT_DIR" >&2
+  echo "Set OBSIDIAN_VAULT_DIR to a valid vault root directory." >&2
+  exit 1
+fi
+
+npm ci
+npm run build
+mkdir -p "$PLUGIN_DIR"
+cp main.js manifest.json styles.css "$PLUGIN_DIR/"
+obsidian plugin:reload id=agent-client || true
+
+echo "Installed to: $PLUGIN_DIR"
+"""
