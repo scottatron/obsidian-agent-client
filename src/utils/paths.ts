@@ -1,4 +1,5 @@
 import { execFile } from "child_process";
+import { homedir } from "os";
 import { Platform } from "obsidian";
 import { buildWslShellWrapper, getLoginShell } from "./platform";
 
@@ -106,6 +107,29 @@ export function resolveCommandPathInWsl(
 }
 
 /**
+ * Expand a leading home-directory shorthand in a path string.
+ *
+ * Supported:
+ * - "~" => user home directory
+ * - "~/foo" / "~\\foo" => path inside user home
+ *
+ * Unsupported by design:
+ * - "~username/..." (left unchanged)
+ */
+export function expandHomePath(pathValue: string): string {
+	if (!pathValue) {
+		return pathValue;
+	}
+	if (pathValue === "~") {
+		return homedir();
+	}
+	if (pathValue.startsWith("~/") || pathValue.startsWith("~\\")) {
+		return `${homedir()}${pathValue.slice(1)}`;
+	}
+	return pathValue;
+}
+
+/**
  * Extract the directory containing a command (for PATH adjustments).
  * Example: /usr/local/bin/node → /usr/local/bin
  *
@@ -139,7 +163,7 @@ export function resolveNodeDirectory(
 	nodePathSetting: string | undefined,
 ): string | undefined {
 	if (!nodePathSetting) return undefined;
-	const trimmed = nodePathSetting.trim();
+	const trimmed = expandHomePath(nodePathSetting.trim());
 	if (!isAbsolutePath(trimmed)) return undefined;
 	return resolveCommandDirectory(trimmed) || undefined;
 }

@@ -22,7 +22,7 @@ import {
 	getEnhancedWindowsEnv,
 	prepareShellCommand,
 } from "../utils/platform";
-import { resolveNodeDirectory } from "../utils/paths";
+import { expandHomePath, resolveNodeDirectory } from "../utils/paths";
 import {
 	extractStderrErrorHint,
 	getSpawnErrorInfo,
@@ -141,7 +141,7 @@ export class AcpClient {
 			);
 		}
 
-		const command = config.command.trim();
+		const command = expandHomePath(config.command.trim());
 		const args = config.args.length > 0 ? [...config.args] : [];
 
 		this.logger.log(
