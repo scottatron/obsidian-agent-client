@@ -1,6 +1,6 @@
 {
 	"name": "obsidian-agent-client",
-	"version": "0.10.2",
+	"version": "0.10.2-scottatron",
 	"description": "Use AI coding agents via the Agent Client Protocol directly inside Obsidian",
 	"main": "main.js",
 	"scripts": {
@@ -15,7 +15,7 @@
 		"docs:build": "vitepress build docs",
 		"docs:preview": "vitepress preview docs"
 	},
-	"keywords": [],
+	"keywords": [ ],
 	"author": "",
 	"license": "Apache-2.0",
 	"devDependencies": {
