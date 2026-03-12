@@ -202,6 +202,68 @@ function mergeToolCallContent(
 	};
 }
 
+/**
+ * Active permission prompts should follow the live edge of the transcript
+ * so the user does not have to scroll back to approve the next tool call.
+ */
+function shouldMoveToolCallMessageToEnd(
+	content: ToolCallMessageContent,
+): boolean {
+	return content.permissionRequest?.isActive === true;
+}
+
+/**
+ * Update an existing tool call message, optionally moving it to the bottom
+ * when the update activates a permission prompt.
+ */
+function updateToolCallMessage(
+	messages: ChatMessage[],
+	toolCallId: string,
+	content: ToolCallMessageContent,
+): { messages: ChatMessage[]; found: boolean } {
+	const moveToEnd = shouldMoveToolCallMessageToEnd(content);
+	const updatedMessages: ChatMessage[] = [];
+	let movedMessage: ChatMessage | null = null;
+	let found = false;
+
+	for (const message of messages) {
+		let didUpdate = false;
+		const updatedContent = message.content.map((item) => {
+			if (item.type === "tool_call" && item.toolCallId === toolCallId) {
+				found = true;
+				didUpdate = true;
+				return mergeToolCallContent(item, content);
+			}
+			return item;
+		});
+
+		if (!didUpdate) {
+			updatedMessages.push(message);
+			continue;
+		}
+
+		const updatedMessage: ChatMessage = {
+			...message,
+			content: updatedContent,
+		};
+
+		if (moveToEnd) {
+			movedMessage = updatedMessage;
+		} else {
+			updatedMessages.push(updatedMessage);
+		}
+	}
+
+	if (movedMessage) {
+		updatedMessages.push(movedMessage);
+	}
+
+	return {
+		messages: updatedMessages,
+		found,
+	};
+}
+
 // ============================================================================
 // Hook Implementation
 // ============================================================================
@@ -371,18 +433,7 @@ export function useChat(
 			if (content.type !== "tool_call") return;
 
 			setMessages((prev) =>
-				prev.map((message) => ({
-					...message,
-					content: message.content.map((c) => {
-						if (
-							c.type === "tool_call" &&
-							c.toolCallId === toolCallId
-						) {
-							return mergeToolCallContent(c, content);
-						}
-						return c;
-					}),
-				})),
+				updateToolCallMessage(prev, toolCallId, content).messages,
 			);
 		},
 		[],
@@ -399,22 +450,11 @@ export function useChat(
 			if (content.type !== "tool_call") return;
 
 			setMessages((prev) => {
-				// Try to find existing tool call
-				let found = false;
-				const updated = prev.map((message) => ({
-					...message,
-					content: message.content.map((c) => {
-						if (
-							c.type === "tool_call" &&
-							c.toolCallId === toolCallId
-						) {
-							found = true;
-							return mergeToolCallContent(c, content);
-						}
-						return c;
-					}),
-				}));
-
+				const { messages: updated, found } = updateToolCallMessage(
+					prev,
+					toolCallId,
+					content,
+				);
 				if (found) {
 					return updated;
 				}
