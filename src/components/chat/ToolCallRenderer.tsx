@@ -42,6 +42,8 @@ export function ToolCallRenderer({
 	const [selectedOptionId, setSelectedOptionId] = useState<
 		string | undefined
 	>(permissionRequest?.selectedOptionId);
+	const [isCollapsed, setIsCollapsed] = useState(false);
+	const [hasAutoCollapsed, setHasAutoCollapsed] = useState(false);
 
 	// Update selectedOptionId when permissionRequest changes
 	React.useEffect(() => {
@@ -49,6 +51,15 @@ export function ToolCallRenderer({
 			setSelectedOptionId(permissionRequest?.selectedOptionId);
 		}
 	}, [permissionRequest?.selectedOptionId]);
+
+	const isCompleted = status === "completed" || status === "failed";
+
+	React.useEffect(() => {
+		if (isCompleted && !hasAutoCollapsed) {
+			setIsCollapsed(true);
+			setHasAutoCollapsed(true);
+		}
+	}, [isCompleted, hasAutoCollapsed]);
 
 	// Get vault path for relative path display
 	const vaultPath = useMemo(() => {
@@ -91,9 +102,15 @@ export function ToolCallRenderer({
 	};
 
 	return (
-		<div className="agent-client-message-tool-call">
+		<div
+			className={`agent-client-message-tool-call ${isCollapsed ? "agent-client-message-tool-call-collapsed" : ""}`}
+		>
 			{/* Header */}
-			<div className="agent-client-message-tool-call-header">
+			<button
+				type="button"
+				className="agent-client-message-tool-call-header"
+				onClick={() => setIsCollapsed((value) => !value)}
+			>
 				<div className="agent-client-message-tool-call-title">
 					{showEmojis && (
 						<span className="agent-client-message-tool-call-icon">
@@ -102,38 +119,46 @@ export function ToolCallRenderer({
 					)}
 					{title}
 				</div>
-				{kind === "execute" &&
-					rawInput &&
-					typeof rawInput.command === "string" && (
-						<div className="agent-client-message-tool-call-command">
-							<code>
-								{rawInput.command}
-								{Array.isArray(rawInput.args) &&
-									rawInput.args.length > 0 &&
-									` ${(rawInput.args as string[]).join(" ")}`}
-							</code>
+				<div className="agent-client-message-tool-call-meta">
+					<div className="agent-client-message-tool-call-status">
+						Status: {status}
+					</div>
+					<span className="agent-client-message-tool-call-toggle">
+						{isCollapsed ? "▶" : "▼"}
+					</span>
+				</div>
+			</button>
+
+			{!isCollapsed && (
+				<>
+					{kind === "execute" &&
+						rawInput &&
+						typeof rawInput.command === "string" && (
+							<div className="agent-client-message-tool-call-command">
+								<code>
+									{rawInput.command}
+									{Array.isArray(rawInput.args) &&
+										rawInput.args.length > 0 &&
+										` ${(rawInput.args as string[]).join(" ")}`}
+								</code>
+							</div>
+						)}
+					{locations && locations.length > 0 && (
+						<div className="agent-client-message-tool-call-locations">
+							{locations.map((loc, idx) => (
+								<span
+									key={idx}
+									className="agent-client-message-tool-call-location"
+								>
+									{toRelativePath(loc.path, vaultPath)}
+									{loc.line != null && `:${loc.line}`}
+								</span>
+							))}
 						</div>
 					)}
-				{locations && locations.length > 0 && (
-					<div className="agent-client-message-tool-call-locations">
-						{locations.map((loc, idx) => (
-							<span
-								key={idx}
-								className="agent-client-message-tool-call-location"
-							>
-								{toRelativePath(loc.path, vaultPath)}
-								{loc.line != null && `:${loc.line}`}
-							</span>
-						))}
-					</div>
-				)}
-				<div className="agent-client-message-tool-call-status">
-					Status: {status}
-				</div>
-			</div>
 
-			{/* Kind-specific details */}
-			{/* kind && (
+					{/* Kind-specific details */}
+					{/* kind && (
 				<div className="agent-client-message-tool-call-details">
 					<ToolCallDetails
 						kind={kind}
@@ -144,40 +169,40 @@ export function ToolCallRenderer({
 				</div>
 			)*/}
 
-			{/* Tool call content (diffs, terminal output, etc.) */}
-			{toolContent &&
-				toolContent.map((item, index) => {
-					if (item.type === "terminal") {
-						return (
-							<TerminalRenderer
-								key={index}
-								terminalId={item.terminalId}
-								acpClient={acpClient || null}
-								plugin={plugin}
-							/>
-						);
-					}
-					if (item.type === "diff") {
-						return (
-							<DiffRenderer
-								key={index}
-								diff={item}
-								plugin={plugin}
-								autoCollapse={
-									plugin.settings.displaySettings
-										.autoCollapseDiffs
-								}
-								collapseThreshold={
-									plugin.settings.displaySettings
-										.diffCollapseThreshold
-								}
-							/>
-						);
-					}
-					/*
-					if (item.type === "content") {
-						// Handle content blocks (text, image, etc.)
-						if ("text" in item.content) {
+					{/* Tool call content (diffs, terminal output, etc.) */}
+					{toolContent &&
+						toolContent.map((item, index) => {
+							if (item.type === "terminal") {
+								return (
+									<TerminalRenderer
+										key={index}
+										terminalId={item.terminalId}
+										acpClient={acpClient || null}
+										plugin={plugin}
+									/>
+								);
+							}
+							if (item.type === "diff") {
+								return (
+									<DiffRenderer
+										key={index}
+										diff={item}
+										plugin={plugin}
+										autoCollapse={
+											plugin.settings.displaySettings
+												.autoCollapseDiffs
+										}
+										collapseThreshold={
+											plugin.settings.displaySettings
+												.diffCollapseThreshold
+										}
+									/>
+								);
+							}
+							/*
+							if (item.type === "content") {
+								// Handle content blocks (text, image, etc.)
+								if ("text" in item.content) {
 							return (
 								<div key={index} className="agent-client-tool-call-content">
 									<MarkdownTextRenderer
@@ -187,22 +212,24 @@ export function ToolCallRenderer({
 								</div>
 							);
 						}
-						}*/
-					return null;
-				})}
+								}*/
+							return null;
+						})}
 
-			{/* Permission request section */}
-			{permissionRequest && (
-				<PermissionRequestSection
-					permissionRequest={{
-						...permissionRequest,
-						selectedOptionId: selectedOptionId,
-					}}
-					toolCallId={toolCallId}
-					plugin={plugin}
-					onApprovePermission={onApprovePermission}
-					onOptionSelected={setSelectedOptionId}
-				/>
+					{/* Permission request section */}
+					{permissionRequest && (
+						<PermissionRequestSection
+							permissionRequest={{
+								...permissionRequest,
+								selectedOptionId: selectedOptionId,
+							}}
+							toolCallId={toolCallId}
+							plugin={plugin}
+							onApprovePermission={onApprovePermission}
+							onOptionSelected={setSelectedOptionId}
+						/>
+					)}
+				</>
 			)}
 		</div>
 	);

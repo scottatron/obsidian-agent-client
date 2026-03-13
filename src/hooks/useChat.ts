@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useRef } from "react";
 import type {
 	ChatMessage,
 	MessageContent,
@@ -203,25 +203,14 @@ function mergeToolCallContent(
 }
 
 /**
- * Active permission prompts should follow the live edge of the transcript
- * so the user does not have to scroll back to approve the next tool call.
- */
-function shouldMoveToolCallMessageToEnd(
-	content: ToolCallMessageContent,
-): boolean {
-	return content.permissionRequest?.isActive === true;
-}
-
-/**
  * Update an existing tool call message, optionally moving it to the bottom
- * when the update activates a permission prompt.
+ * so the live tool activity stays at the end of the transcript.
  */
 function updateToolCallMessage(
 	messages: ChatMessage[],
 	toolCallId: string,
 	content: ToolCallMessageContent,
 ): { messages: ChatMessage[]; found: boolean } {
-	const moveToEnd = shouldMoveToolCallMessageToEnd(content);
 	const updatedMessages: ChatMessage[] = [];
 	let movedMessage: ChatMessage | null = null;
 	let found = false;
@@ -246,12 +235,7 @@ function updateToolCallMessage(
 			...message,
 			content: updatedContent,
 		};
-
-		if (moveToEnd) {
-			movedMessage = updatedMessage;
-		} else {
-			updatedMessages.push(updatedMessage);
-		}
+		movedMessage = updatedMessage;
 	}
 
 	if (movedMessage) {
@@ -262,6 +246,29 @@ function updateToolCallMessage(
 		messages: updatedMessages,
 		found,
 	};
+}
+
+function createAssistantMessage(content: MessageContent): ChatMessage {
+	return {
+		id: crypto.randomUUID(),
+		role: "assistant",
+		content: [content],
+		timestamp: new Date(),
+	};
+}
+
+function canUpdateLastAssistantMessage(
+	lastMessage: ChatMessage,
+	content: MessageContent,
+): boolean {
+	if (lastMessage.role !== "assistant") {
+		return false;
+	}
+
+	return (
+		lastMessage.content.length > 0 &&
+		lastMessage.content.every((item) => item.type === content.type)
+	);
 }
 
 // ============================================================================
@@ -298,6 +305,7 @@ export function useChat(
 	const [isSending, setIsSending] = useState(false);
 	const [lastUserMessage, setLastUserMessage] = useState<string | null>(null);
 	const [errorInfo, setErrorInfo] = useState<ErrorInfo | null>(null);
+	const shouldStartNewAssistantMessageRef = useRef(false);
 
 	/**
 	 * Add a new message to the chat.
@@ -312,23 +320,27 @@ export function useChat(
 	 */
 	const updateLastMessage = useCallback((content: MessageContent): void => {
 		setMessages((prev) => {
-			// If no messages or last message is not assistant, create new assistant message
+			// Only extend the last assistant block when this is a continuation
+			// of the same content type. Otherwise append a new assistant message
+			// to preserve the chronological UI flow.
 			if (
+				shouldStartNewAssistantMessageRef.current ||
 				prev.length === 0 ||
-				prev[prev.length - 1].role !== "assistant"
+				!canUpdateLastAssistantMessage(
+					prev[prev.length - 1],
+					content,
+				)
 			) {
-				const newMessage: ChatMessage = {
-					id: crypto.randomUUID(),
-					role: "assistant",
-					content: [content],
-					timestamp: new Date(),
-				};
-				return [...prev, newMessage];
+				shouldStartNewAssistantMessageRef.current = false;
+				return [...prev, createAssistantMessage(content)];
 			}
 
 			// Update existing last message
 			const lastMessage = prev[prev.length - 1];
-			const updatedMessage = { ...lastMessage };
+			const updatedMessage: ChatMessage = {
+				...lastMessage,
+				content: [...lastMessage.content],
+			};
 
 			if (content.type === "text" || content.type === "agent_thought") {
 				// Append to existing content of same type or create new content
@@ -460,6 +472,7 @@ export function useChat(
 				}
 
 				// Not found - create new message
+				shouldStartNewAssistantMessageRef.current = false;
 				return [
 					...prev,
 					{
@@ -544,6 +557,7 @@ export function useChat(
 	 * Clear all messages.
 	 */
 	const clearMessages = useCallback((): void => {
+		shouldStartNewAssistantMessageRef.current = false;
 		setMessages([]);
 		setLastUserMessage(null);
 		setIsSending(false);
@@ -574,6 +588,7 @@ export function useChat(
 			}));
 
 			setMessages(chatMessages);
+			shouldStartNewAssistantMessageRef.current = false;
 			setIsSending(false);
 			setErrorInfo(null);
 		},
@@ -588,6 +603,7 @@ export function useChat(
 	const setMessagesFromLocal = useCallback(
 		(localMessages: ChatMessage[]): void => {
 			setMessages(localMessages);
+			shouldStartNewAssistantMessageRef.current = false;
 			setIsSending(false);
 			setErrorInfo(null);
 		},
@@ -689,6 +705,7 @@ export function useChat(
 				content: userMessageContent,
 				timestamp: new Date(),
 			};
+			shouldStartNewAssistantMessageRef.current = true;
 			addMessage(userMessage);
 
 			// Phase 3: Set sending state and store original message
