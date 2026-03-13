@@ -65,7 +65,8 @@ npm run dev
 
 1. After cloning to `.obsidian/plugins/agent-client`, run `npm run dev`
 2. Enable the plugin in Obsidian Settings → Community Plugins
-3. Code changes trigger automatic rebuilds, but you need to reload the plugin (toggle it off/on in Community Plugins) to see changes
+3. Code changes trigger automatic rebuilds into `dist/` (`main.js`, `manifest.json`, `styles.css`), and `main.js` is also mirrored to the repo root for direct-in-vault development.
+4. You still need to reload the plugin (toggle it off/on in Community Plugins) to see changes unless you are using a hot-reload workflow that syncs `dist/` into your vault.
 
 ## Available Commands
 

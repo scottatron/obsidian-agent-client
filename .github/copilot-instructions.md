@@ -31,8 +31,8 @@
 - Keep styling in `styles.css` (avoid JS style manipulation).
 
 ## Developer workflows
-- Dev watch build: `npm run dev` (esbuild watch; outputs `main.js`).
-- Production build: `npm run build` (runs `tsc -noEmit -skipLibCheck` then esbuild production).
+- Dev watch build: `npm run dev` (esbuild watch; outputs `dist/main.js` plus copied `dist/manifest.json` and `dist/styles.css`, and mirrors `main.js` at repo root).
+- Production build: `npm run build` (runs `tsc -noEmit -skipLibCheck` then esbuild production with the same `dist/` outputs).
 - Formatting: `npm run format` / `npm run format:check` (Prettier).
 - Linting: `npm run lint` / `npm run lint:fix`.
 - Docs site: `npm run docs:dev`, `npm run docs:build`, `npm run docs:preview`.

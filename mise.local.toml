@@ -15,7 +15,7 @@ fi
 npm ci
 npm run build
 mkdir -p "$PLUGIN_DIR"
-cp main.js manifest.json styles.css "$PLUGIN_DIR/"
+cp dist/main.js dist/manifest.json dist/styles.css "$PLUGIN_DIR/"
 obsidian plugin:reload id=agent-client || true
 
 echo "Installed to: $PLUGIN_DIR"
