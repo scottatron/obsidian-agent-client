@@ -49,3 +49,4 @@ dev/
 
 # Local implementation plans and working documents
 plan/
+.shiftlog/

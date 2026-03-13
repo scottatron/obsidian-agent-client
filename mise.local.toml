@@ -4,6 +4,7 @@ run = """
 set -e
 
 VAULT_DIR="${OBSIDIAN_VAULT_DIR:-/Users/sarthur/src/github.com/scottatron/squad}"
+VAULT_NAME=$(basename "$VAULT_DIR")
 PLUGIN_DIR="$VAULT_DIR/.obsidian/plugins/agent-client"
 
 if [ ! -d "$VAULT_DIR/.obsidian" ]; then
@@ -12,11 +13,27 @@ if [ ! -d "$VAULT_DIR/.obsidian" ]; then
   exit 1
 fi
 
-npm ci
-npm run build
 mkdir -p "$PLUGIN_DIR"
 cp dist/main.js dist/manifest.json dist/styles.css "$PLUGIN_DIR/"
-obsidian plugin:reload id=agent-client || true
+obsidian vault="$VAULT_NAME" plugin:enable id=agent-client || true
+obsidian vault="$VAULT_NAME" plugin:reload id=agent-client || true
 
 echo "Installed to: $PLUGIN_DIR"
 """
+# Watch built artifacts so local-install only runs after the bundle sync completes.
+sources = ["dist/main.js", "dist/manifest.json", "dist/styles.css"]
+
+[tasks.install-to-all-local-vaults]
+description = "Install agent-client to all local vaults"
+run = """
+set -e
+
+for vault_name in $(obsidian vaults); do
+  echo "Installing to vault: $vault_name"
+  vault_path=$(obsidian vault="$vault_name" vault info=path)
+  VAULT_DIR="$vault_path" mise run local-install
+done
+"""
+
+[env]
+OBSIDIAN_VAULT_DIR = "/Users/sarthur/src/github.com/Wesfarmers-Digital/platform-support"
