@@ -1,5 +1,7 @@
 import esbuild from "esbuild";
 import process from "process";
+import { copyFileSync, mkdirSync, watch } from "node:fs";
+import { join } from "node:path";
 import { builtinModules } from "node:module";
 
 const banner = `/*
@@ -9,6 +11,38 @@ if you want to view the source, please visit the github repository of this plugi
 `;
 
 const prod = process.argv[2] === "production";
+const distDir = "dist";
+const distMainFile = join(distDir, "main.js");
+const assetFiles = ["manifest.json", "styles.css"];
+
+function ensureDistDir() {
+	mkdirSync(distDir, { recursive: true });
+}
+
+function copyAssetsToDist() {
+	ensureDistDir();
+	for (const assetFile of assetFiles) {
+		copyFileSync(assetFile, join(distDir, assetFile));
+	}
+}
+
+function mirrorBundleToRoot() {
+	copyFileSync(distMainFile, "main.js");
+}
+
+const syncBuildArtifactsPlugin = {
+	name: "sync-build-artifacts",
+	setup(build) {
+		build.onEnd((result) => {
+			if (result.errors.length > 0) {
+				return;
+			}
+
+			copyAssetsToDist();
+			mirrorBundleToRoot();
+		});
+	},
+};
 
 const context = await esbuild.context({
 	banner: {
@@ -37,13 +71,37 @@ const context = await esbuild.context({
 	logLevel: "info",
 	sourcemap: prod ? false : "inline",
 	treeShaking: true,
-	outfile: "main.js",
+	outfile: distMainFile,
 	minify: prod,
+	plugins: [syncBuildArtifactsPlugin],
 });
 
 if (prod) {
+	ensureDistDir();
 	await context.rebuild();
 	process.exit(0);
 } else {
+	copyAssetsToDist();
+	const assetWatchers = assetFiles.map((assetFile) =>
+		watch(assetFile, () => {
+			copyAssetsToDist();
+		}),
+	);
+
+	const cleanup = () => {
+		for (const assetWatcher of assetWatchers) {
+			assetWatcher.close();
+		}
+	};
+
+	process.on("SIGINT", () => {
+		cleanup();
+		process.exit(0);
+	});
+	process.on("SIGTERM", () => {
+		cleanup();
+		process.exit(0);
+	});
+
 	await context.watch();
 }
