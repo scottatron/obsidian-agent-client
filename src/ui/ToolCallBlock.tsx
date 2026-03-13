@@ -43,6 +43,8 @@ export const ToolCallBlock = React.memo(function ToolCallBlock({
 	const [selectedOptionId, setSelectedOptionId] = useState<
 		string | undefined
 	>(permissionRequest?.selectedOptionId);
+	const [isCollapsed, setIsCollapsed] = useState(false);
+	const [hasAutoCollapsed, setHasAutoCollapsed] = useState(false);
 
 	// Update selectedOptionId when permissionRequest changes
 	React.useEffect(() => {
@@ -50,6 +52,15 @@ export const ToolCallBlock = React.memo(function ToolCallBlock({
 			setSelectedOptionId(permissionRequest?.selectedOptionId);
 		}
 	}, [permissionRequest?.selectedOptionId]);
+
+	const isCompleted = status === "completed" || status === "failed";
+
+	React.useEffect(() => {
+		if (isCompleted && !hasAutoCollapsed) {
+			setIsCollapsed(true);
+			setHasAutoCollapsed(true);
+		}
+	}, [isCompleted, hasAutoCollapsed]);
 
 	// Get vault path for relative path display
 	const vaultPath = useMemo(() => {
@@ -90,9 +101,15 @@ export const ToolCallBlock = React.memo(function ToolCallBlock({
 	};
 
 	return (
-		<div className="agent-client-message-tool-call">
+		<div
+			className={`agent-client-message-tool-call ${isCollapsed ? "agent-client-message-tool-call-collapsed" : ""}`}
+		>
 			{/* Header */}
-			<div className="agent-client-message-tool-call-header">
+			<button
+				type="button"
+				className="agent-client-message-tool-call-header"
+				onClick={() => setIsCollapsed((value) => !value)}
+			>
 				<div className="agent-client-message-tool-call-title">
 					{showEmojis && (
 						<LucideIcon
@@ -110,78 +127,90 @@ export const ToolCallBlock = React.memo(function ToolCallBlock({
 						/>
 					)}
 				</div>
-				{kind === "execute" &&
-					rawInput &&
-					typeof rawInput.command === "string" && (
-						<div className="agent-client-message-tool-call-command">
-							<code>
-								{rawInput.command}
-								{Array.isArray(rawInput.args) &&
-									rawInput.args.length > 0 &&
-									` ${(rawInput.args as string[]).join(" ")}`}
-							</code>
-						</div>
-					)}
-				{locations && locations.length > 0 && (
-					<div className="agent-client-message-tool-call-locations">
-						{locations.map((loc, idx) => (
-							<span
-								key={idx}
-								className="agent-client-message-tool-call-location"
-							>
-								{toRelativePath(loc.path, vaultPath)}
-								{loc.line != null && `:${loc.line}`}
-							</span>
-						))}
+				<div className="agent-client-message-tool-call-meta">
+					<div className="agent-client-message-tool-call-status">
+						Status: {status}
 					</div>
-				)}
-			</div>
+					<span className="agent-client-message-tool-call-toggle">
+						{isCollapsed ? "▶" : "▼"}
+					</span>
+				</div>
+			</button>
 
-			{/* Tool call content (diffs, terminal output, etc.) */}
-			{toolContent &&
-				toolContent.map((item, index) => {
-					if (item.type === "terminal") {
-						return (
-							<TerminalBlock
-								key={index}
-								terminalId={item.terminalId}
-								terminalClient={terminalClient || null}
-								plugin={plugin}
-							/>
-						);
-					}
-					if (item.type === "diff") {
-						return (
-							<DiffRenderer
-								key={index}
-								diff={item}
-								plugin={plugin}
-								autoCollapse={
-									plugin.settings.displaySettings
-										.autoCollapseDiffs
-								}
-								collapseThreshold={
-									plugin.settings.displaySettings
-										.diffCollapseThreshold
-								}
-							/>
-						);
-					}
-					return null;
-				})}
+			{!isCollapsed && (
+				<>
+					{kind === "execute" &&
+						rawInput &&
+						typeof rawInput.command === "string" && (
+							<div className="agent-client-message-tool-call-command">
+								<code>
+									{rawInput.command}
+									{Array.isArray(rawInput.args) &&
+										rawInput.args.length > 0 &&
+										` ${(rawInput.args as string[]).join(" ")}`}
+								</code>
+							</div>
+						)}
+					{locations && locations.length > 0 && (
+						<div className="agent-client-message-tool-call-locations">
+							{locations.map((loc, idx) => (
+								<span
+									key={idx}
+									className="agent-client-message-tool-call-location"
+								>
+									{toRelativePath(loc.path, vaultPath)}
+									{loc.line != null && `:${loc.line}`}
+								</span>
+								))}
+							</div>
+						)}
+					{/* Tool call content (diffs, terminal output, etc.) */}
+					{toolContent &&
+						toolContent.map((item, index) => {
+							if (item.type === "terminal") {
+								return (
+									<TerminalBlock
+										key={index}
+										terminalId={item.terminalId}
+										terminalClient={terminalClient || null}
+										plugin={plugin}
+									/>
+								);
+							}
+							if (item.type === "diff") {
+								return (
+									<DiffRenderer
+										key={index}
+										diff={item}
+										plugin={plugin}
+										autoCollapse={
+											plugin.settings.displaySettings
+												.autoCollapseDiffs
+										}
+										collapseThreshold={
+											plugin.settings.displaySettings
+												.diffCollapseThreshold
+										}
+									/>
+								);
+							}
+							return null;
+						})}
 
-			{/* Permission request section */}
-			{permissionRequest && (
-				<PermissionBanner
-					permissionRequest={{
-						...permissionRequest,
-						selectedOptionId: selectedOptionId,
-					}}
-					toolCallId={toolCallId}
-					plugin={plugin}
-					onApprovePermission={onApprovePermission}
-					onOptionSelected={setSelectedOptionId}
-				/>
+					{/* Permission request section */}
+					{permissionRequest && (
+						<PermissionBanner
+							permissionRequest={{
+								...permissionRequest,
+								selectedOptionId: selectedOptionId,
+							}}
+							toolCallId={toolCallId}
+							plugin={plugin}
+							onApprovePermission={onApprovePermission}
+							onOptionSelected={setSelectedOptionId}
+						/>
+					)}
+				</>
 			)}
 		</div>
 	);
