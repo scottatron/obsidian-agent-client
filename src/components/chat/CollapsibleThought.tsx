@@ -18,7 +18,12 @@ export function CollapsibleThought({ text, plugin }: CollapsibleThoughtProps) {
 			onClick={() => setIsExpanded(!isExpanded)}
 		>
 			<div className="agent-client-collapsible-thought-header">
-				{showEmojis && "💡"}Thinking
+				{showEmojis && (
+					<span className="agent-client-collapsible-thought-header-icon">
+						💡
+					</span>
+				)}
+				Thinking
 				<span className="agent-client-collapsible-thought-icon">
 					{isExpanded ? "▼" : "▶"}
 				</span>
