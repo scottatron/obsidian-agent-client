@@ -183,12 +183,12 @@ If your plugin does not need CSS, delete this file.
 
 /* Tool Call */
 .agent-client-message-tool-call {
-	padding: 8px;
+	padding: 0;
 	margin-bottom: 12px;
 	background-color: transparent;
-	border: 1px solid var(--background-modifier-border);
-	border-radius: 4px;
-	font-size: 0.85em;
+	border: none;
+	border-radius: 0;
+	font-size: 0.9em;
 	user-select: text;
 	overflow-wrap: break-word;
 	word-wrap: break-word;
@@ -206,7 +206,7 @@ If your plugin does not need CSS, delete this file.
 	justify-content: space-between;
 	gap: 12px;
 	width: 100%;
-	padding: 0;
+	padding: 1.2rem 0.8rem;
 	margin: 0;
 	background: none;
 	border: none;
@@ -225,8 +225,10 @@ If your plugin does not need CSS, delete this file.
 	gap: 4px;
 	flex: 1 1 auto;
 	min-width: 0;
-	font-weight: bold;
+	font-weight: 300;
+	font-size: 0.9rem;
 	margin-bottom: 0;
+	color: var(--text-muted);
 	user-select: text;
 	overflow-wrap: break-word;
 	word-wrap: break-word;
@@ -271,6 +273,7 @@ If your plugin does not need CSS, delete this file.
 	overflow-wrap: break-word;
 	word-wrap: break-word;
 	word-break: break-word;
+	padding: 1rem 1rem 0;
 }
 
 .agent-client-message-tool-call-location {
@@ -281,7 +284,9 @@ If your plugin does not need CSS, delete this file.
 
 .agent-client-message-tool-call-command {
 	color: var(--text-muted);
-	margin: 4px 0;
+	margin: 0;
+	padding: 1rem;
+	background-color: var(--background-secondary);
 }
 
 .agent-client-message-tool-call-command code {
@@ -1166,7 +1171,7 @@ If your plugin does not need CSS, delete this file.
 /* Collapsible Thought */
 .agent-client-collapsible-thought {
 	font-style: italic;
-	color: var(--text-muted);
+	color: var(--text-faint);
 	background-color: transparent;
 	font-size: 0.9em;
 	cursor: pointer;
@@ -1174,14 +1179,19 @@ If your plugin does not need CSS, delete this file.
 	word-wrap: break-word;
 	word-break: break-word;
 	max-width: 100%;
-	margin-top: 8px;
-	margin-bottom: 12px;
+	margin: 0;
+	padding: 0.6rem 0.8rem;
+	padding-top: 0;
 }
 
 .agent-client-collapsible-thought-header {
 	display: flex;
 	align-items: center;
 	gap: 4px;
+}
+
+.agent-client-collapsible-thought-header-icon {
+	margin-right: 0.2rem;
 }
 
 .agent-client-collapsible-thought-icon {
@@ -1287,13 +1297,14 @@ If your plugin does not need CSS, delete this file.
 	position: relative;
 	padding: 0 16px;
 	width: 100%;
-	margin: 4px 0;
+	margin: 0;
 	/* Prevent long strings from overflowing */
 	overflow-wrap: break-word;
 	word-wrap: break-word;
 	word-break: break-word;
 	max-width: 100%;
 	box-sizing: border-box;
+	line-height: 1.7;
 }
 
 .agent-client-message-renderer.agent-client-message-user {
@@ -1345,6 +1356,11 @@ If your plugin does not need CSS, delete this file.
 	height: 14px;
 }
 
+.agent-client-message-renderer.agent-client-message-assistant
+	.agent-client-markdown-text-renderer {
+	padding: 0.8rem 1rem;
+	color: var(--text-muted);
+}
 /* Text with Mentions */
 .agent-client-text-with-mentions {
 	user-select: text;
@@ -1382,6 +1398,13 @@ If your plugin does not need CSS, delete this file.
 .agent-client-markdown-text-renderer.markdown-rendered svg {
 	overflow-x: auto;
 	display: block;
+}
+
+.agent-client-message-renderer.agent-client-message-assistant
+	.agent-client-collapsible-thought-content
+	.agent-client-markdown-text-renderer {
+	padding: 0;
+	color: var(--text-faint);
 }
 
 /* Tool Call Diff Renderer */
