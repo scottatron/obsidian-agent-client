@@ -19,10 +19,21 @@ function ensureDistDir() {
 	mkdirSync(distDir, { recursive: true });
 }
 
+function logDevSync(message) {
+	if (!prod) {
+		console.log(`[dev] ${message}`);
+	}
+}
+
+function copyAssetToDist(assetFile) {
+	ensureDistDir();
+	copyFileSync(assetFile, join(distDir, assetFile));
+}
+
 function copyAssetsToDist() {
 	ensureDistDir();
 	for (const assetFile of assetFiles) {
-		copyFileSync(assetFile, join(distDir, assetFile));
+		copyAssetToDist(assetFile);
 	}
 }
 
@@ -40,6 +51,9 @@ const syncBuildArtifactsPlugin = {
 
 			copyAssetsToDist();
 			mirrorBundleToRoot();
+			logDevSync(
+				`rebuilt ${distMainFile} and synced ${assetFiles.join(", ")}`,
+			);
 		});
 	},
 };
@@ -82,9 +96,11 @@ if (prod) {
 	process.exit(0);
 } else {
 	copyAssetsToDist();
+	logDevSync(`initial asset sync: ${assetFiles.join(", ")}`);
 	const assetWatchers = assetFiles.map((assetFile) =>
 		watch(assetFile, () => {
-			copyAssetsToDist();
+			copyAssetToDist(assetFile);
+			logDevSync(`synced ${assetFile} -> ${join(distDir, assetFile)}`);
 		}),
 	);
 
