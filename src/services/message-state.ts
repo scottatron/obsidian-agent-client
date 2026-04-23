@@ -75,6 +75,32 @@ export function mergeToolCallContent(
 	};
 }
 
+function shouldMoveToolCallMessageToEnd(
+	content: ToolCallMessageContent,
+): boolean {
+	return content.permissionRequest?.isActive === true;
+}
+
+function moveMessageToEnd(
+	messages: ChatMessage[],
+	fromIndex: number,
+	toolCallIndex: Map<string, number>,
+): ChatMessage[] {
+	if (fromIndex < 0 || fromIndex >= messages.length - 1) {
+		return messages;
+	}
+
+	const message = messages[fromIndex];
+	const result = [
+		...messages.slice(0, fromIndex),
+		...messages.slice(fromIndex + 1),
+		message,
+	];
+
+	rebuildToolCallIndex(result, toolCallIndex);
+	return result;
+}
+
 // ============================================================================
 // Message Array Update Functions (for batching)
 // ============================================================================
@@ -193,6 +219,8 @@ export function applyUpsertToolCall(
 	content: ToolCallMessageContent,
 	toolCallIndex: Map<string, number>,
 ): ChatMessage[] {
+	const moveToEnd = shouldMoveToolCallMessageToEnd(content);
+
 	// O(1) lookup via index
 	const messageIdx = toolCallIndex.get(content.toolCallId);
 	if (messageIdx !== undefined && messageIdx < prev.length) {
@@ -216,7 +244,9 @@ export function applyUpsertToolCall(
 			};
 			const result = [...prev];
 			result[messageIdx] = updatedMessage;
-			return result;
+			return moveToEnd
+				? moveMessageToEnd(result, messageIdx, toolCallIndex)
+				: result;
 		}
 	}
 
@@ -230,7 +260,7 @@ export function applyUpsertToolCall(
 		if (!hasTarget) return message;
 		found = true;
 		toolCallIndex.set(content.toolCallId, idx); // Fix stale index
-		return {
+		const updatedMessage = {
 			...message,
 			content: message.content.map((c) => {
 				if (
@@ -242,9 +272,22 @@ export function applyUpsertToolCall(
 				return c;
 			}),
 		};
+		return updatedMessage;
 	});
 
-	if (found) return updated;
+	if (found) {
+		if (!moveToEnd) {
+			return updated;
+		}
+		const updatedIndex = updated.findIndex((message) =>
+			message.content.some(
+				(c) =>
+					c.type === "tool_call" &&
+					c.toolCallId === content.toolCallId,
+			),
+		);
+		return moveMessageToEnd(updated, updatedIndex, toolCallIndex);
+	}
 
 	// Not found: create new message and register in index
 	toolCallIndex.set(content.toolCallId, prev.length);
